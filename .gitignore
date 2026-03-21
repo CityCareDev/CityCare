@@ -1,0 +1,16 @@
+/target/
+# IDEs
+.idea/
+.vscode/
+*.iml
+.settings/
+.project
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Dependencies (Don't forget these!)
+node_modules/
+bin/
+obj/

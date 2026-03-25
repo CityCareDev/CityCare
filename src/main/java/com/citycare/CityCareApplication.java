@@ -33,7 +33,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  *                    ... etc for all 5 tables
  *                    5. All @RestController classes are registered as HTTP
  *                    endpoints
- *                    6. App is ready at http://localhost:8080/api
+ *                    6. App is ready at http://localhost:9090/api
  *                    ============================================================
  */
 @SpringBootApplication

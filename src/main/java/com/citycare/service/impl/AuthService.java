@@ -51,9 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final CitizenRepository citizenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
-    private final AuthenticationManager authenticationManager;
 
     @Transactional
     public AuthResponse register(RegisterRequest req) {
@@ -65,43 +64,41 @@ public class AuthService {
                 .name(req.getName())
                 .email(req.getEmail())
                 .password(passwordEncoder.encode(req.getPassword())) // BCrypt hash
-                .role(User.Role.CITIZEN) // Hardcoded – cannot self-promote to ADMIN
+                .role(User.Role.CITIZEN)// Hardcoded – cannot self-promote to ADMIN
+                .status(User.Status.ACTIVE) // Default status
                 .phone(req.getPhone())
                 .build();
 
-        Citizen citizenProfile = Citizen.builder()
-                .user(user) // Link Citizen to User
-                .name(req.getName())
-                .contactInfo(req.getPhone())
+        User savedUser = userRepository.save(user);
+
+        // 3. MANDATORY: Create and Save the Citizen record linked to this User
+        // This ensures the data appears in the 'citizens' table immediately
+        Citizen citizen = Citizen.builder()
+                .name(savedUser.getName())
+                .contactInfo(savedUser.getPhone())
+                .user(savedUser) // Linking the Foreign Key
+                .status(Citizen.Status.ACTIVE)
                 .build();
-        user.setCitizen(citizenProfile); // Set the bidirectional relationship
 
-        userRepository.save(user); // Hibernate: INSERT INTO users (...)
+        citizenRepository.save(citizen);
 
+
+        return mapToAuthResponse(savedUser);
+    }
+
+    public AuthResponse login(LoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return mapToAuthResponse(user);
+    }
+
+    private AuthResponse mapToAuthResponse(User user) {
         return AuthResponse.builder()
-                .token(jwtUtils.generateToken(user.getEmail()))
                 .userId(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .build();
-    }
-
-    public AuthResponse login(LoginRequest req) {
-        // Spring Security validates email+password → throws BadCredentialsException if invalid
-        var auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
-        );
-        SecurityContextHolder.getContext().setAuthentication(auth);
-
-        User user = userRepository.findByEmail(req.getEmail()).orElseThrow();
-
-        return AuthResponse.builder()
-                .token(jwtUtils.generateToken(user.getEmail()))
-                .userId(user.getUserId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole()) // Frontend checks this to decide which page to show
                 .build();
     }
 }

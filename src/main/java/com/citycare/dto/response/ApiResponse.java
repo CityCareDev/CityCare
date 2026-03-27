@@ -6,38 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * ============================================================
- * ApiResponse.java  –  Standard JSON wrapper for all responses
- * ============================================================
- *
- * Every single API endpoint returns this wrapper so the frontend
- * always receives the same predictable structure:
- *
- *   SUCCESS:
- *   {
- *     "success": true,
- *     "message": "Login successful",
- *     "data": { ... actual data ... }
- *   }
- *
- *   ERROR:
- *   {
- *     "success": false,
- *     "message": "Email is already registered"
- *   }
- *
- * Because of @JsonInclude(NON_NULL) → if 'data' is null, it won't appear
- * in the JSON output at all (keeps error responses clean).
- *
- * ============================================================
- * HOW THIS FILE WORKS:
- *   Controllers call:
- *     ApiResponse.ok("message", data)    → success response
- *     ApiResponse.ok("message")          → success, no data body
- *     ApiResponse.error("message")       → error response
- * ============================================================
- */
 @Data
 @Builder
 @NoArgsConstructor

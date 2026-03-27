@@ -1,5 +1,7 @@
 package com.citycare.entity;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,10 +26,12 @@ public class Patient extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "citizen_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User citizen;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "emergency_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Emergency emergency;
 
     @Column(nullable = false)
@@ -44,4 +48,19 @@ public class Patient extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Status status = Status.ADMITTED;
+
+
+    @Override
+    public String toString() {
+        return "Patient{" +
+                "patientId=" + patientId +
+                ", citizenId=" + (citizen != null ? citizen.getUserId() : "null") +
+                ", emergencyId=" + (emergency != null ? emergency.getEmergencyId() : "null") +
+                ", admissionDate=" + admissionDate +
+                ", dischargeDate=" + dischargeDate +
+                ", ward='" + ward + '\'' +
+                ", status=" + status +
+                ", notes='" + notes + '\'' +
+                '}';
+    }
 }

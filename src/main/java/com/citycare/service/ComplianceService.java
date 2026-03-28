@@ -1,4 +1,4 @@
-package com.citycare.service.impl;
+package com.citycare.service;
 
 import com.citycare.dto.request.AuditRequest;
 import com.citycare.dto.request.ComplianceRecordRequest;

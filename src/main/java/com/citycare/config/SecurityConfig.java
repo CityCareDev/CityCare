@@ -5,8 +5,10 @@ import com.citycare.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -38,16 +40,16 @@ public class SecurityConfig {
     }
 
     @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 
     @Bean
@@ -57,41 +59,56 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // PUBLIC
-                        .requestMatchers(
-                                "/auth/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**"
-                        ).permitAll()
+//                        // Public endpoints (Login/Register via JSON)
+//                        .requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+//                        //"/citizens/**", "/facilities/**"
+//                        // Protected endpoints (Requires Basic Auth Header)
+//                       //.requestMatchers("emergencies/**","/emergencies/report", "/emergencies/my").permitAll()
+//                       //.requestMatchers("/admin/**").permitAll()
+//                        .requestMatchers("/treatments/**","/patients/**").hasRole("DOCTOR").hja
+//
+//
+//
+//                        .anyRequest().authenticated()
+                                .requestMatchers(
+                                        "/auth/**",
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html",
+                                        "/v3/api-docs/**"
+                                ).permitAll()
 
-                        // CITIZEN
-                        .requestMatchers("/emergencies/report").hasRole("CITIZEN")
-                        .requestMatchers("/emergencies/my").hasRole("CITIZEN")
-                        .requestMatchers("/citizens/profile").hasAnyRole("CITIZEN", "ADMIN")
+                                // CITIZEN
+                                .requestMatchers("/emergencies/report").hasRole("CITIZEN")
+                                .requestMatchers("/emergencies/my").hasRole("CITIZEN")
+                                .requestMatchers("/citizens/profile").hasAnyRole("CITIZEN", "ADMIN")
+                                .requestMatchers(HttpMethod.GET,"/citizens/*/documents").hasAnyRole("ADMIN","DOCTOR","NURSE")
+                                .requestMatchers("/citizens/documents/*/verify").hasRole("ADMIN")
 
-                        // DISPATCHER
-                        .requestMatchers("/emergencies/pending").hasRole("DISPATCHER")
-                        .requestMatchers("/emergencies/ambulances/available").hasRole("DISPATCHER")
-                        .requestMatchers("/emergencies/*/dispatch").hasRole("DISPATCHER")
+                                // DISPATCHER
+                                .requestMatchers("/emergencies/pending").hasRole("DISPATCHER")
+                                .requestMatchers("/emergencies/ambulances/available").hasRole("DISPATCHER")
+                                .requestMatchers("/emergencies/*/dispatch").hasRole("DISPATCHER")
 
-                        // ADMIN
-                        .requestMatchers("/emergencies/dispatched").hasAnyRole("ADMIN", "CITY_HEALTH_OFFICER")
-                        .requestMatchers("/patients/admit").hasRole("ADMIN")
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/facilities").hasAnyRole("ADMIN", "CITY_HEALTH_OFFICER")
+                                // ADMIN
 
-                        // DOCTOR / NURSE
-                        .requestMatchers("/treatments/**").hasAnyRole("DOCTOR", "NURSE")
-                        .requestMatchers("/patients/*/status").hasAnyRole("DOCTOR", "NURSE", "ADMIN")
+                                .requestMatchers("/emergencies/dispatched").hasAnyRole("ADMIN", "CITY_HEALTH_OFFICER")
+                                .requestMatchers("/patients/admit").hasRole("ADMIN")
+                                .requestMatchers("/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/facilities").hasAnyRole("ADMIN", "CITY_HEALTH_OFFICER")
 
-                        // COMPLIANCE
-                        .requestMatchers("/compliance/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "CITY_HEALTH_OFFICER")
+                                // DOCTOR / NURSE
+                                .requestMatchers("/treatments/**").hasAnyRole("DOCTOR", "NURSE")
+                                .requestMatchers("/patients/*/status").hasAnyRole("DOCTOR", "NURSE", "ADMIN")
 
-                        // ANY AUTHENTICATED
-                        .anyRequest().authenticated()
+                                // COMPLIANCE
+                                .requestMatchers("/compliance/**").hasAnyRole("ADMIN", "COMPLIANCE_OFFICER", "CITY_HEALTH_OFFICER")
+
+                                // ANY AUTHENTICATED
+                                .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
+                // Enable Basic Auth for all non-public requests
+                .httpBasic(Customizer.withDefaults())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -104,7 +121,6 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;

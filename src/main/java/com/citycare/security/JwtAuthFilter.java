@@ -1,93 +1,85 @@
 package com.citycare.security;
 
+import com.citycare.repository.UserRepository;
+import com.citycare.service.JWTService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * ============================================================
- * JwtAuthFilter.java  –  JWT Validation on Every Request
- * ============================================================
- *
- * This filter runs once per HTTP request (OncePerRequestFilter).
- * It intercepts every request BEFORE Spring Security's default filter.
- *
- * WHAT IT DOES PER REQUEST:
- *   1. Read "Authorization" header: "Bearer eyJhbGci..."
- *   2. Extract the token (remove "Bearer " prefix)
- *   3. Validate token signature + expiry via JwtUtils
- *   4. Extract email from token payload
- *   5. Load User from DB by email
- *   6. Create an authentication object and set it in SecurityContextHolder
- *   7. Spring Security now knows: "this request is from user X with role Y"
- *   8. Proceed to the controller
- *
- * IF TOKEN IS MISSING OR INVALID:
- *   SecurityContextHolder stays empty → Spring Security returns 401
- *
- * ============================================================
- * HOW THIS FILE WORKS:
- *   Registered in SecurityConfig via:
- *     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
- *   Runs on every request. Public paths (/auth/**) still pass through
- *   this filter but their endpoints are marked permitAll() so even
- *   unauthenticated requests can reach them.
- * ============================================================
- */
 @Component
-@RequiredArgsConstructor
+@Slf4j // Useful for debugging token issues
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtUtils jwtUtils;
-    private final UserDetailsServiceImpl userDetailsService;
+    @Autowired
+    private JWTService jwtService;
+
+    @Autowired
+    private ApplicationContext context;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
-        try {
-            String jwt = extractJwt(request);
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-            if (jwt != null && jwtUtils.validateToken(jwt)) {
-                String email = jwtUtils.getEmailFromToken(jwt);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        String authHeader = request.getHeader("Authorization");
+        String token = null;
+        String username = null;
 
-                // Create authentication token with the user's authorities (roles)
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,                          // no credentials needed (JWT already validated)
-                                userDetails.getAuthorities()   // ["ROLE_CITIZEN"] etc.
-                        );
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // Tell Spring Security: this request belongs to an authenticated user
-                SecurityContextHolder.getContext().setAuthentication(auth);
+        // 1. Extract Token and Username
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+            try {
+                username = jwtService.extractUserName(token);
+            } catch (Exception e) {
+                log.error("Could not extract username from token: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            logger.error("Cannot set user authentication: " + e.getMessage());
         }
 
-        chain.doFilter(request, response); // Hand off to the next filter / controller
-    }
+        // 2. Authenticate if username exists and no current authentication exists
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-    private String extractJwt(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        // Token header format: "Bearer eyJhbGci..."
-        if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
-            return header.substring(7); // Remove "Bearer " (7 chars)
+            // Fetch UserDetails using your Service
+            UserDetails userDetails = context.getBean(UserDetailsServiceImpl.class).loadUserByUsername(username);
+
+            // 3. Validate Token
+            if (userDetails != null && jwtService.validateToken(token, userDetails)) {
+
+                // 4. Safe Database Lookup
+                // We use ifPresent to avoid the ".get()" NullPointerException
+                userRepository.findByEmail(username).ifPresent(user -> {
+
+                    // Create the Auth Token
+                    // Standard practice: Pass userDetails as the Principal
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+
+                    // Link the request details (IP, Session ID, etc.)
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // Finalize the Security Context
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                });
+            }
         }
-        return null;
+
+        // 5. Continue the filter chain
+        filterChain.doFilter(request, response);
     }
 }

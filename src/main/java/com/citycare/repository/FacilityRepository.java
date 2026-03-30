@@ -1,6 +1,6 @@
-package com.cts.CityCare.CityCare.repository;
+package com.citycare.repository;
 
-import com.cts.CityCare.CityCare.entity.Facility;
+import com.citycare.entity.Facility;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

@@ -1,15 +1,15 @@
-package com.cts.CityCare.CityCare.service;
+package com.citycare.service;
 
 
 
-import com.cts.CityCare.CityCare.dto.request.CitizenProfileRequest;
-import com.cts.CityCare.CityCare.entity.Citizen;
-import com.cts.CityCare.CityCare.entity.CitizenDocument;
-import com.cts.CityCare.CityCare.entity.User;
-import com.cts.CityCare.CityCare.exception.ResourceNotFoundException;
-import com.cts.CityCare.CityCare.repository.CitizenDocumentRepository;
-import com.cts.CityCare.CityCare.repository.CitizenRepository;
-import com.cts.CityCare.CityCare.repository.UserRepository;
+import com.citycare.dto.request.CitizenProfileRequest;
+import com.citycare.entity.Citizen;
+import com.citycare.entity.CitizenDocument;
+import com.citycare.entity.User;
+import com.citycare.exception.ResourceNotFoundException;
+import com.citycare.repository.CitizenDocumentRepository;
+import com.citycare.repository.CitizenRepository;
+import com.citycare.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -14,10 +14,6 @@ import java.time.LocalDate;
 @Builder
 public class CitizenDocument extends BaseEntity {
 
-    public enum DocType {
-        ID_PROOF, HEALTH_CARD
-    }
-
     public enum VerificationStatus {
         PENDING, VERIFIED, REJECTED
     }
@@ -30,17 +26,14 @@ public class CitizenDocument extends BaseEntity {
     @JoinColumn(name = "citizen_id", nullable = false)
     private Citizen citizen;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DocType docType;
 
-    @Column(nullable = false)
-    private String fileUri;
+    @Lob
+    @Column(nullable = false, columnDefinition = "MEDIUMBLOB")
+    private byte[] documentData;
 
     private LocalDate uploadedDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
     private VerificationStatus verificationStatus = VerificationStatus.PENDING;
 }

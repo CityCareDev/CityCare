@@ -1,6 +1,9 @@
 package com.citycare.entity;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.persistence.Entity;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -25,6 +28,7 @@ public class Staff extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long staffId;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "facility_id", nullable = false)
     private Facility facility;
@@ -45,7 +49,8 @@ public class Staff extends BaseEntity {
     private Status status = Status.ACTIVE;
 
     // Link to User account
-    @OneToOne(fetch = FetchType.LAZY)
+    @JsonIgnore
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private User user;
 }

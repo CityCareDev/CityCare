@@ -11,3 +11,7 @@ public interface AmbulanceDispatchRepository extends JpaRepository<AmbulanceDisp
     List<AmbulanceDispatch> findByEmergencyEmergencyId(Long emergencyId);
     List<AmbulanceDispatch> findByDispatcherUserId(Long dispatcherId);
 }
+
+
+
+

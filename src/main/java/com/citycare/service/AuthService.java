@@ -6,42 +6,13 @@ import com.citycare.dto.response.AuthResponse;
 import com.citycare.entity.Citizen;
 import com.citycare.entity.User;
 import com.citycare.exception.BadRequestException;
+import com.citycare.repository.CitizenRepository;
 import com.citycare.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * ============================================================
- * AuthService.java  –  Registration and Login Logic
- * ============================================================
- *
- * register():
- *   Only CITIZENS can self-register. Role is hardcoded to CITIZEN.
- *   Steps:
- *   1. Check email is not already registered (throws 400 if duplicate)
- *   2. Hash password with BCrypt
- *   3. Save User to DB → Hibernate does: INSERT INTO users (...)
- *   4. Generate JWT token
- *   5. Return token + user info → frontend stores the token
- *
- * login():
- *   Works for ALL roles (Citizen, Doctor, Nurse, Dispatcher, Admin).
- *   Steps:
- *   1. AuthenticationManager.authenticate() is called
- *      → internally calls UserDetailsService.loadUserByUsername(email)
- *      → compares BCrypt(input password) with stored hash
- *      → throws BadCredentialsException if wrong (caught by GlobalExceptionHandler)
- *   2. Generate new JWT token
- *   3. Return token + role → frontend uses role to navigate to correct dashboard
- *
- * ============================================================
- * HOW THIS FILE WORKS:
- *   Called by AuthController for /auth/register and /auth/login.
- *   @Transactional on register() → if DB save fails, everything rolls back.
- * ============================================================
- */
 @Service
 @RequiredArgsConstructor
 public class AuthService {

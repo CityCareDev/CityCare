@@ -3,8 +3,6 @@ package com.citycare.exception;
 import com.citycare.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,52 +14,67 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * 1. HANDLES: Bean Validation Errors (@Valid)
+     * This catches @NotBlank, @Size, @Min, etc., from your DTOs.
+     * Postman Result: 400 Bad Request
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+
+        // Wraps the error map inside your consistent ApiResponse structure
+        ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
+                .success(false)
+                .message("Validation Failed")
+                .data(errors)
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<ApiResponse<Object>> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
+    public ResponseEntity<ApiResponse<Object>> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // Handles @Valid failures – returns per-field error messages
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(err -> {
-            String field = ((FieldError) err).getField();
-            errors.put(field, err.getDefaultMessage());
-        });
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.<Map<String, String>>builder()
-                        .success(false)
-                        .message("Validation failed – check field errors")
-                        .data(errors)
-                        .build());
-    }
-
-    // Wrong email or password during login
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.error("Invalid email or password"));
-    }
-
-    // User authenticated but doesn't have the required role
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnauthorized(UnauthorizedAccessException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error("Access denied - You do not have permission to access this resource"));
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CapacityExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleCapacity(CapacityExceededException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidDataException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvalidData(InvalidDataException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     // Catch-all for any other exceptions
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
+    public ResponseEntity<ApiResponse<Object>> handleGlobal(Exception ex) {
+        // In production, you would log the full 'ex' here for debugging.
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("An unexpected error occurred: " + ex.getMessage()));
+                .body(ApiResponse.error("An unexpected system error occurred: " + ex.getMessage()));
     }
 }
